@@ -1,0 +1,102 @@
+name: Static Analysis
+
+on:
+  pull_request:
+    branches: [ main ]
+    paths:
+      - '**.go'
+      - '**.js'
+      - '**.jsx'
+      - '.github/workflows/static-analysis.yml'
+
+jobs:
+  lint_and_fix_go:
+    name: Go Static Analysis
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.21'
+
+      - name: Cache Go modules
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/go-build
+            ./code/go.sum
+          key: ${{ runner.os }}-go-${{ hashFiles('./code/go.sum') }}
+
+      - name: Ensure Go module exists and tidy
+        run: |
+          if [ ! -f go.mod ]; then
+            go mod init github.com/${{ github.repository }}
+          fi
+          go mod tidy
+        working-directory: ./code
+
+      - name: Install reviewdog
+        run: |
+          curl -sfL https://raw.githubusercontent.com/reviewdog/reviewdog/master/install.sh | sh -s -- -b /usr/local/bin
+
+      - name: Install golangci-lint
+        run: |
+          curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(go env GOPATH)/bin v1.57.2
+          echo "$(go env GOPATH)/bin" >> $GITHUB_PATH
+        working-directory: ./code
+
+      - name: Run golangci-lint and report via reviewdog
+        run: |
+          golangci-lint run --out-format=checkstyle ./... | reviewdog -f=checkstyle -name="golangci-lint" -reporter=github-pr-review -fail-on-error=true
+        env:
+          REVIEWDOG_GITHUB_API_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        working-directory: ./code
+
+      - name: Upload golangci-lint summary
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: golangci-lint-summary
+          path: ./code
+
+      - name: Summarize lint results
+        if: always()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            core.summary.addRaw("## Go Static Analysis Run in ./code\n")
+
+
+  lint_js:
+    name: JavaScript Static Analysis
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Find all JS/TS projects
+        id: find_projects
+        run: |
+          find . -name package.json -not -path "*/node_modules/*" > projects.txt
+          cat projects.txt
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
+      - name: Run ESLint via reviewdog (PR review)
+        uses: reviewdog/action-eslint@v1
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          reporter: github-pr-review
+          eslint_flags: '**/*.{js,jsx,ts,tsx} --no-error-on-unmatched-pattern'
+          fail_level: error
+          workdir: ./js-code
