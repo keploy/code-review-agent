@@ -3,7 +3,7 @@ name: GitHub Models PR Review
 on:
   pull_request: 
     branches:
-      - dev-review-setup
+      - init-proj
   workflow_dispatch:
 
 permissions:
