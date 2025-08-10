@@ -1,16 +1,16 @@
 package main
 
 import (
-    "context"
-    "fmt"
-    "log"
-   // "os"
+	"context"
+	"fmt"
+	"log"
+	"os/exec"
 
-    "github.com/euclidstellar/code-review-agent/internal/config"
-    "github.com/euclidstellar/code-review-agent/internal/diff"
-    "github.com/euclidstellar/code-review-agent/internal/github"
-    "github.com/euclidstellar/code-review-agent/internal/reviewer"
-    "github.com/euclidstellar/code-review-agent/internal/utils"
+	"github.com/euclidstellar/code-review-agent/internal/config"
+	"github.com/euclidstellar/code-review-agent/internal/diff"
+	"github.com/euclidstellar/code-review-agent/internal/github"
+	"github.com/euclidstellar/code-review-agent/internal/reviewer"
+	"github.com/euclidstellar/code-review-agent/internal/utils"
 )
 
 func main() {
@@ -18,6 +18,9 @@ func main() {
     logger := utils.NewLogger()
     
     logger.Info("Starting Smart AI Code Review Action v1.0.0")
+
+    // Fix git ownership issue first
+    setupGitSafeDirectory()
 
     // Load configuration
     cfg, err := config.LoadFromEnv()
@@ -77,6 +80,21 @@ func main() {
 
     logger.Info("AI code review posted successfully")
     logger.GitHubOutput("review-posted", "true")
+}
+
+func setupGitSafeDirectory() {
+    // Configure git to trust the workspace directory
+    commands := [][]string{
+        {"git", "config", "--global", "--add", "safe.directory", "/github/workspace"},
+        {"git", "config", "--global", "--add", "safe.directory", "*"},
+    }
+
+    for _, cmd := range commands {
+        if output, err := exec.Command(cmd[0], cmd[1:]...).CombinedOutput(); err != nil {
+            fmt.Printf("⚠️  Warning: Could not configure git safe directory: %s\n", string(output))
+        }
+    }
+    fmt.Println("✅ Git safe directory configured")
 }
 
 func generateFallbackReview(diff, errorMsg string) string {
