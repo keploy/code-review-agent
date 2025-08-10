@@ -258,6 +258,6 @@ Add this to your workflow file:
 ```yaml
 - uses: your-username/code-review-agent@v1
   with:
-    github-token: ${{ secrets.GITHUB_TOKEN }}
+    github-token: ${{ secrets.GH_TOKEN }}
     model: 'gpt-4.1-nano'
 ```
