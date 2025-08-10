@@ -13,8 +13,13 @@ jobs:
   test-action:
     runs-on: ubuntu-latest
     steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Required for git diff operations
+          
       - name: Test Local Action
-        uses: ./  # Uses the action.yml in current repo
+        uses: ./  # Now this will work
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           model: 'gpt-4.1-nano'

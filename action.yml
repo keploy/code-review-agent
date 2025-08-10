@@ -1,10 +1,10 @@
 name: 'Smart AI Code Review'
-description: 'AI-powered code review with intelligent diff prioritization and token optimization'
-author: 'Your Name'
+description: 'AI-powered code review with intelligent diff prioritization and GitHub Models integration'
+author: 'EuclidStellar'  # Your GitHub username
 
 inputs:
   github-token:
-    description: 'GitHub fine-grained PAT with Models and repository access'
+    description: 'GitHub token with pull-requests:write and models:read permissions'
     required: true
   model:
     description: 'AI model to use'
