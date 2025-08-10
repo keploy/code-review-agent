@@ -1,0 +1,23 @@
+name: Test Code Review Action
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+  workflow_dispatch:  # Allows manual triggering
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  test-action:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Test Local Action
+        uses: ./  # Uses the action.yml in current repo
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          model: 'gpt-4.1-nano'
+          max-tokens: 6700
+          temperature: 0.1
+          ignore-patterns: '*.md,node_modules/**'
