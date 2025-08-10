@@ -12,7 +12,6 @@ RUN apk --no-cache add ca-certificates git
 WORKDIR /root/
 
 COPY --from=builder /app/main .
-COPY entrypoint.sh .
-RUN chmod +x entrypoint.sh
+RUN chmod +x main
 
-ENTRYPOINT ["./entrypoint.sh"]
+ENTRYPOINT ["./main"]
