@@ -9,6 +9,10 @@ RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o main .
 FROM alpine:latest
 RUN apk --no-cache add ca-certificates git
 
+# Configure git to trust the workspace directory
+RUN git config --global --add safe.directory /github/workspace
+RUN git config --global --add safe.directory '*'
+
 # Put binary in /app instead of /github/workspace
 WORKDIR /app
 COPY --from=builder /app/main .
