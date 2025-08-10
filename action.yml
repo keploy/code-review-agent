@@ -9,7 +9,7 @@ inputs:
   model:
     description: 'AI model to use'
     required: false
-    default: 'gpt-4.1-nano'
+    default: 'gpt-4o-mini'  # Fix: Use available model
   max-tokens:
     description: 'Maximum tokens for diff analysis'
     required: false
