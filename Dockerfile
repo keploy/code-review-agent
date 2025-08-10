@@ -9,13 +9,10 @@ RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o main .
 FROM alpine:latest
 RUN apk --no-cache add ca-certificates git
 
-# Create the directory and copy the binary
-RUN mkdir -p /github/workspace
-COPY --from=builder /app/main /github/workspace/main
-RUN chmod +x /github/workspace/main
+# Put binary in /app instead of /github/workspace
+WORKDIR /app
+COPY --from=builder /app/main .
+RUN chmod +x main
 
-# Set working directory last
-WORKDIR /github/workspace
-
-# Use absolute path to be sure
-ENTRYPOINT ["/github/workspace/main"]
+# GitHub Actions will mount /github/workspace, but we're using /app
+ENTRYPOINT ["/app/main"]
