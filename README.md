@@ -230,3 +230,34 @@ Shows if the final diff obeys the token limit (\~6700 tokens max).
 | `focused_diff.txt`      | Diff after smart prioritization   |
 | `sorted_files.txt`      | File list sorted by priority/size |
 | `priority_analysis.txt` | Token and category for each file  |
+
+## Setup
+
+1. **Create a Fine-Grained Personal Access Token:**
+   - Go to GitHub Settings → Developer settings → Personal access tokens → Fine-grained tokens
+   - Grant these permissions:
+     - **Repository:** Contents (read), Issues (write), Pull requests (write), Metadata (read)
+     - **Account:** GitHub Models (read)
+
+2. **Add to Repository Secrets:**
+   ```
+   GH_FINE_GRAINED_PAT = your_token_here
+   ```
+
+3. **Use in Workflow:**
+   ```yaml
+   - uses: your-username/code-review-agent@v1
+     with:
+       github-token: ${{ secrets.GH_FINE_GRAINED_PAT }}
+   ```
+
+## Installation
+
+Add this to your workflow file:
+
+```yaml
+- uses: your-username/code-review-agent@v1
+  with:
+    github-token: ${{ secrets.GITHUB_TOKEN }}
+    model: 'gpt-4.1-nano'
+```

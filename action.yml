@@ -1,0 +1,39 @@
+name: 'Smart AI Code Review'
+description: 'AI-powered code review with intelligent diff prioritization and token optimization'
+author: 'Your Name'
+
+inputs:
+  github-token:
+    description: 'GitHub fine-grained PAT with Models and repository access'
+    required: true
+  model:
+    description: 'AI model to use'
+    required: false
+    default: 'gpt-4.1-nano'
+  max-tokens:
+    description: 'Maximum tokens for diff analysis'
+    required: false
+    default: '6700'
+  temperature:
+    description: 'AI model temperature'
+    required: false
+    default: '0.1'
+  ignore-patterns:
+    description: 'Comma-separated patterns to ignore'
+    required: false
+    default: '*.md,node_modules/**'
+  include-patterns:
+    description: 'Comma-separated patterns to include'
+    required: false
+
+outputs:
+  review-posted:
+    description: 'Whether review was successfully posted'
+
+runs:
+  using: 'docker'
+  image: 'Dockerfile'
+
+branding:
+  icon: 'git-pull-request'
+  color: 'blue'
