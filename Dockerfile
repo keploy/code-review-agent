@@ -7,8 +7,8 @@ COPY . .
 RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o main .
 
 FROM alpine:latest
-# FIX: Add bash, which is required by the Ollama setup script
-RUN apk --no-cache add ca-certificates git bash
+# FIX: Add curl, which is required to download the Ollama install script
+RUN apk --no-cache add ca-certificates git bash curl
 
 # Configure git to trust the workspace directory
 RUN git config --global --add safe.directory /github/workspace
