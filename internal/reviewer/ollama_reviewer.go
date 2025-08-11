@@ -1,13 +1,14 @@
 package reviewer
 
 import (
-    "bytes"
-    "encoding/json"
-    "fmt"
-    "io"
-    "net/http"
-    "os/exec"
-    "time"
+	"bytes"
+	"encoding/json"
+	"fmt"
+	"io"
+	"net/http"
+	"os"
+	"os/exec"
+	"time"
 )
 
 type OllamaClient struct {
@@ -39,40 +40,57 @@ func NewOllamaClient(model string) *OllamaClient {
 
 func (c *OllamaClient) SetupOllama() error {
     fmt.Println("🔧 Setting up Ollama...")
-    
+
     // Install Ollama
     cmd := exec.Command("bash", "-c", "curl -fsSL https://ollama.com/install.sh | sh")
     if output, err := cmd.CombinedOutput(); err != nil {
         return fmt.Errorf("failed to install Ollama: %w (output: %s)", err, string(output))
     }
-    
-    // Start Ollama service
-    fmt.Println("🚀 Starting Ollama service...")
-    cmd = exec.Command("nohup", "ollama", "serve")
+
+    // --- IMPROVED SERVICE STARTUP ---
+    fmt.Println("🚀 Starting Ollama service with logging...")
+    // Use a log file to capture output from the service
+    logFile, err := os.Create("ollama_serve.log")
+    if err != nil {
+        return fmt.Errorf("failed to create ollama log file: %w", err)
+    }
+    defer logFile.Close()
+
+    // Start the service directly, not with nohup
+    cmd = exec.Command("ollama", "serve")
+    cmd.Stdout = logFile // Redirect stdout to the log file
+    cmd.Stderr = logFile // Redirect stderr to the log file
+
     if err := cmd.Start(); err != nil {
         return fmt.Errorf("failed to start Ollama service: %w", err)
     }
-    
+    // --- END IMPROVEMENT ---
+
     // Wait for service to be ready
     fmt.Println("⏳ Waiting for Ollama service to be ready...")
-    for i := 0; i < 30; i++ {
+    serviceReady := false
+    for i := 0; i < 60; i++ { // Increased timeout to 2 minutes (60 * 2s)
         if c.isServiceReady() {
+            serviceReady = true
             break
         }
         time.Sleep(2 * time.Second)
     }
-    
-    if !c.isServiceReady() {
-        return fmt.Errorf("Ollama service failed to start within timeout")
+
+    if !serviceReady {
+        // If the service fails, print its logs for debugging
+        logContent, _ := os.ReadFile("ollama_serve.log")
+        errorMsg := fmt.Sprintf("Ollama service failed to start within timeout. Log output:\n---\n%s\n---", string(logContent))
+        return fmt.Errorf(errorMsg)
     }
-    
+
     // Pull model
     fmt.Printf("📥 Pulling model %s...\n", c.model)
     cmd = exec.Command("ollama", "pull", c.model)
     if output, err := cmd.CombinedOutput(); err != nil {
         return fmt.Errorf("failed to pull model %s: %w (output: %s)", c.model, err, string(output))
     }
-    
+
     fmt.Println("✅ Ollama setup complete")
     return nil
 }
