@@ -47,29 +47,34 @@ func (c *OllamaClient) SetupOllama() error {
         return fmt.Errorf("failed to install Ollama: %w (output: %s)", err, string(output))
     }
 
-    // --- IMPROVED SERVICE STARTUP ---
+    // --- IMPROVEMENT: Verify installation and use absolute path ---
+    ollamaPath := "/usr/local/bin/ollama"
+    if _, err := os.Stat(ollamaPath); os.IsNotExist(err) {
+        return fmt.Errorf("ollama binary not found at %s after installation. The install script might have failed or installed it elsewhere", ollamaPath)
+    }
+    fmt.Printf("✅ Ollama binary found at %s\n", ollamaPath)
+    // --- END IMPROVEMENT ---
+
     fmt.Println("🚀 Starting Ollama service with logging...")
-    // Use a log file to capture output from the service
     logFile, err := os.Create("ollama_serve.log")
     if err != nil {
         return fmt.Errorf("failed to create ollama log file: %w", err)
     }
     defer logFile.Close()
 
-    // Start the service directly, not with nohup
-    cmd = exec.Command("ollama", "serve")
-    cmd.Stdout = logFile // Redirect stdout to the log file
-    cmd.Stderr = logFile // Redirect stderr to the log file
+    // Start the service using the absolute path
+    cmd = exec.Command(ollamaPath, "serve")
+    cmd.Stdout = logFile
+    cmd.Stderr = logFile
 
     if err := cmd.Start(); err != nil {
         return fmt.Errorf("failed to start Ollama service: %w", err)
     }
-    // --- END IMPROVEMENT ---
 
     // Wait for service to be ready
     fmt.Println("⏳ Waiting for Ollama service to be ready...")
     serviceReady := false
-    for i := 0; i < 60; i++ { // Increased timeout to 2 minutes (60 * 2s)
+    for i := 0; i < 60; i++ {
         if c.isServiceReady() {
             serviceReady = true
             break
@@ -78,15 +83,14 @@ func (c *OllamaClient) SetupOllama() error {
     }
 
     if !serviceReady {
-        // If the service fails, print its logs for debugging
         logContent, _ := os.ReadFile("ollama_serve.log")
         errorMsg := fmt.Sprintf("Ollama service failed to start within timeout. Log output:\n---\n%s\n---", string(logContent))
         return fmt.Errorf(errorMsg)
     }
 
-    // Pull model
+    // Pull model using the absolute path
     fmt.Printf("📥 Pulling model %s...\n", c.model)
-    cmd = exec.Command("ollama", "pull", c.model)
+    cmd = exec.Command(ollamaPath, "pull", c.model)
     if output, err := cmd.CombinedOutput(); err != nil {
         return fmt.Errorf("failed to pull model %s: %w (output: %s)", c.model, err, string(output))
     }
