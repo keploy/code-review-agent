@@ -22,7 +22,7 @@ jobs:
         uses: ./  # Now this will work
         with:
           github-token: ${{ secrets.GH_SECRET }}
-          model: 'gpt-4o-mini'  # Fix: Use available model
+          model: 'fail-hoja-bhai'  # Fix: Use available model
           max-tokens: 6700
           temperature: 0.1
           ignore-patterns: '*.md,node_modules/**'
