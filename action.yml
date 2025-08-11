@@ -1,6 +1,6 @@
 name: 'Smart AI Code Review'
 description: 'AI-powered code review with intelligent diff prioritization and GitHub Models integration'
-author: 'EuclidStellar'  # Your GitHub username
+author: 'EuclidStellar'
 
 inputs:
   github-token:
@@ -9,7 +9,7 @@ inputs:
   model:
     description: 'AI model to use'
     required: false
-    default: 'gpt-4o-mini'  # Fix: Use available model
+    default: 'gpt-4o-mini'
   max-tokens:
     description: 'Maximum tokens for diff analysis'
     required: false
@@ -25,10 +25,25 @@ inputs:
   include-patterns:
     description: 'Comma-separated patterns to include'
     required: false
+  # New Ollama inputs
+  enable-ollama:
+    description: 'Enable Ollama as fallback'
+    required: false
+    default: 'true'
+  ollama-model:
+    description: 'Ollama model to use for fallback'
+    required: false
+    default: 'qwen2.5:7b'
+  use-ollama-fallback:
+    description: 'Use Ollama when GitHub Models fails'
+    required: false
+    default: 'true'
 
 outputs:
   review-posted:
     description: 'Whether review was successfully posted'
+  review-provider:
+    description: 'Which provider was used (github-models, ollama, fallback)'
 
 runs:
   using: 'docker'

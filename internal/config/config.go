@@ -22,6 +22,11 @@ type Config struct {
     PRNumber        int
     BaseRef         string
     HeadRef         string
+
+    // Ollama settings
+    OllamaModel    string
+    EnableOllama   bool
+    UseOllamaFallback bool
 }
 
 func LoadFromEnv() (*Config, error) {
@@ -39,6 +44,11 @@ func LoadFromEnv() (*Config, error) {
         PRNumber:        getPRNumber(),
         BaseRef:         getEnv("GITHUB_BASE_REF", ""),
         HeadRef:         getEnv("GITHUB_HEAD_REF", ""),
+
+        // Ollama configuration
+        OllamaModel:       getEnv("INPUT_OLLAMA_MODEL", "gemma3n:e4b"),
+        EnableOllama:      getEnvBool("INPUT_ENABLE_OLLAMA", true),
+        UseOllamaFallback: getEnvBool("INPUT_USE_OLLAMA_FALLBACK", true),
     }
 
     if err := cfg.validate(); err != nil {
@@ -75,6 +85,18 @@ func getEnvFloat(key string, defaultValue float64) float64 {
     if value := os.Getenv(key); value != "" {
         if floatValue, err := strconv.ParseFloat(value, 64); err == nil {
             return floatValue
+        }
+    }
+    return defaultValue
+}
+
+func getEnvBool(key string, defaultValue bool) bool {
+    if value := os.Getenv(key); value != "" {
+        if value == "true" || value == "1" {
+            return true
+        }
+        if value == "false" || value == "0" {
+            return false
         }
     }
     return defaultValue
