@@ -1,3 +1,32 @@
+# name: Test Code Review Action
+
+# on:
+#   pull_request:
+#     types: [opened, synchronize, reopened]
+#   workflow_dispatch:  # Allows manual triggering
+
+# permissions:
+#   contents: read
+#   pull-requests: write
+
+# jobs:
+#   test-action:
+#     runs-on: ubuntu-latest
+#     steps:
+#       - name: Checkout Repository
+#         uses: actions/checkout@v4
+#         with:
+#           fetch-depth: 0  # Required for git diff operations
+          
+#       - name: Test Local Action
+#         uses: ./  # Now this will work
+#         with:
+#           github-token: ${{ secrets.GH_SECRET }}
+#           model: 'gpt-4o-mini'  # Fix: Use available model
+#           max-tokens: 6700
+#           temperature: 0.1
+#           ignore-patterns: '*.md,node_modules/**'
+
 name: Test Code Review Action
 
 on:
@@ -18,11 +47,15 @@ jobs:
         with:
           fetch-depth: 0  # Required for git diff operations
           
-      - name: Test Local Action
-        uses: ./  # Now this will work
+      - name: Test Pre-built Action from GHCR
+        # FIX: Instead of building locally with 'uses: ./', we now pull the pre-built
+        # image from the GitHub Container Registry, just like a real user would.
+        uses: docker://ghcr.io/euclidstellar/code-review-agent:test
         with:
+          # BEST PRACTICE: Use the built-in GITHUB_TOKEN. It's more secure
+          # and avoids potential formatting issues with custom secrets.
           github-token: ${{ secrets.GH_SECRET }}
-          model: 'gpt-4o-mini'  # Fix: Use available model
+          model: 'gpt-4o-mini'
           max-tokens: 6700
           temperature: 0.1
           ignore-patterns: '*.md,node_modules/**'
