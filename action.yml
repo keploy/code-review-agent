@@ -1,0 +1,50 @@
+name: 'Smart AI Code Review'
+description: 'Provides automated, AI-powered code reviews on pull requests with a resilient fallback system using GitHub Models and Ollama.'
+author: 'EuclidStellar'
+
+branding:
+  icon: 'git-pull-request'
+  color: 'blue'
+
+inputs:
+  github-token:
+    description: 'Required. The GITHUB_TOKEN secret.'
+    required: true
+  model:
+    description: 'The primary AI model to use (e.g., from GitHub Models).'
+    required: false
+    default: 'gpt-4o-mini'
+  ollama-model:
+    description: 'The Ollama model to use as a fallback if the primary model fails.'
+    required: false
+    default: 'qwen2:7b'
+  use-ollama-fallback:
+    description: 'Enable the Ollama fallback system.'
+    required: false
+    default: 'true'
+  max-tokens:
+    description: 'The token limit for smart diff prioritization. Diffs larger than this will be summarized.'
+    required: false
+    default: '8000'
+  temperature:
+    description: 'The creativity/randomness of the AI model (0.0 to 2.0).'
+    required: false
+    default: '0.2'
+  ignore-patterns:
+    description: 'Comma-separated list of file patterns to ignore (e.g., "*.md,dist/**").'
+    required: false
+    default: ''
+  include-patterns:
+    description: 'Comma-separated list of file patterns to force-include (overrides ignore).'
+    required: false
+    default: ''
+
+outputs:
+  review-posted:
+    description: '"true" if a review comment was successfully posted, otherwise "false".'
+  review-provider:
+    description: 'The provider that generated the review (github-models, ollama, or static-fallback).'
+
+runs:
+  using: 'docker'
+  image: 'Dockerfile'

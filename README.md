@@ -1,232 +1,100 @@
-# Code Review Agent 
+# Smart AI Code Review Action
 
+[![GitHub Marketplace](https://img.shields.io/badge/Marketplace-Smart%20AI%20Code%20Review-blue.svg?colorA=24292e&colorB=0366d6&style=flat&longCache=true&logo=github)](https://github.com/marketplace/actions/smart-ai-code-review-action)
 
-## Documentation: GitHub Models PR Review Workflow
+An intelligent GitHub Action that provides automated, AI-powered code reviews on your pull requests. It features a resilient fallback system, using **GitHub Models** as the primary provider and **Ollama** for local models as a backup, ensuring you always get a review.
 
-## Overview
+## Key Features
 
-This GitHub Actions workflow is designed to automate **pull request (PR) code reviews** using **GitHub-hosted LLMs** (specifically `gpt-4.1-nano`) via the GitHub Models API. It uses:
+-   🧠 **Intelligent Diff Analysis**: Automatically prioritizes critical files in large pull requests to stay within token limits.
+-   🔄 **Resilient Fallback System**: If GitHub Models API fails or is rate-limited, it seamlessly switches to a self-hosted Ollama model.
+-   🤖 **Multi-Provider Support**: Natively supports GitHub Models and any model compatible with Ollama.
+-   ✅ **Comprehensive Reviews**: Analyzes code for security vulnerabilities, performance bottlenecks, best practices, and style.
+-   ⚙️ **Highly Configurable**: Fine-tune models, ignore specific files, and adjust AI parameters.
+-   🚀 **Zero-Setup Ready**: Works out of the box with the standard `GITHUB_TOKEN`.
 
-* Smart diff file prioritization to manage token limits.
-* Markdown-rich prompts for structured review.
-* Graceful fallbacks for oversized diffs.
+## How It Works
 
-## Objective
+1.  **GitHub Models First**: The action first attempts to generate a high-quality review using the specified GitHub Model (e.g., `gpt-4o-mini`).
+2.  **Ollama Fallback**: If the primary API call fails (due to errors, rate limits, etc.), the action automatically installs Ollama inside the runner, pulls your specified model (e.g., `qwen2:7b`), and generates the review.
+3.  **Static Fallback**: If both AI providers fail, a structured error report is posted, ensuring you are never left without feedback.
 
-To enhance pull request quality checks by automatically generating detailed, structured code reviews that:
+## Usage
 
-* Flag security, performance, and maintainability issues
-* Recommend improvements with code snippets
-* Provide clear summaries and checklists
+Create a workflow file (e.g., `.github/workflows/code-review.yml`) in your repository.
 
----
+### Basic Example
 
-## Workflow Triggers
-
-| Trigger             | Description                                   |
-| ------------------- | --------------------------------------------- |
-| `pull_request`      | Runs on PRs targeting the `init-proj` branch. |
-| `workflow_dispatch` | Allows manual triggering from GitHub UI.      |
+This configuration uses the default settings and is the quickest way to get started.
 
 ```yaml
-ame: GitHub Models PR Review
+name: AI Code Review
+
 on:
   pull_request:
-    branches:
-      - init-proj
-  workflow_dispatch:
-```
+    types: [opened, synchronize, reopened]
 
----
-
-## Permissions
-
-This workflow needs to:
-
-* Read the repo content
-* Comment on PRs (`pull-requests: write`)
-* Create issues if needed
-* PAT (Personal Access Token) with Github Models `read-only` permission with `GH_PAT_MODELS` secret for API access
-
-```yaml
 permissions:
   contents: read
   pull-requests: write
-  issues: write
+
+jobs:
+  ai-review:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # Required to get the full git history for diffing
+
+      - name: Run Smart AI Code Review
+        uses: euclidstellar/code-review-agent@v1 # Replace with your repo name
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
 ```
 
----
+### Advanced Example
 
-## Job: `pr_review`
-
-| Property        | Value              |
-| --------------- | ------------------ |
-| Runs on         | `ubuntu-latest`    |
-| Conditional Run | PR or manual event |
-
-### Step 1: Checkout
-
-Fetches the full repository history:
+This configuration customizes the models, temperature, and file patterns.
 
 ```yaml
-- name: Checkout Repository
-  uses: actions/checkout@v4
-  with:
-    fetch-depth: 0
+name: Advanced AI Code Review
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  ai-review:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Run Smart AI Code Review
+        uses: euclidstellar/code-review-agent@v1 # Replace with your repo name
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          model: 'gpt-4o'
+          ollama-model: 'llama3:8b'
+          temperature: 0.5
+          ignore-patterns: '*.md,*.lock,dist/**'
 ```
 
-### Step 2: Generate Diff
+## Inputs
 
-Creates a diff from base branch to HEAD and saves to `pr_diff.txt`:
+See the [`action.yml`](action.yml) file for a full list of inputs and their descriptions.
 
-```bash
-git fetch origin ${{ github.base_ref }}
-git diff origin/${{ github.base_ref }}...HEAD > pr_diff.txt
-```
+## Contributing
 
----
+Contributions are welcome! Please open an issue or submit a pull request.
 
-## Step 3: Smart Diff Prioritization
+## License
 
-Handles token limits (OpenAI models have token size limits):
-
-### Logic:
-
-| Condition                 | Action                         |
-| ------------------------- | ------------------------------ |
-| Diff within token limit   | Use full diff                  |
-| Diff exceeds token limit  | Prioritize critical files only |
-| Still exceeds safe tokens | Truncate file to \~5000 tokens |
-
-### Categories Used:
-
-| Priority | Category      | File Types                         |
-| -------- | ------------- | ---------------------------------- |
-| 1        | Core Code     | `.js`, `.py`, `.java`, etc.        |
-| 2        | Configuration | `Dockerfile`, `.env`, `.yml`, etc. |
-| 3        | Tests/Docs    | `README`, `test_*.py`, etc.        |
-| 4        | Styles/Docs   | `.css`, `.md`, `.txt`              |
-| 5        | Other         | Anything else                      |
-
-### Snippet: File Categorization
-
-```bash
-if echo "$file" | grep -qE '\.(js|jsx|ts|tsx|py|java|...)'; then
-  PRIORITY=1
-  CATEGORY="Core Code"
-```
-
-### Token Calculation (Estimates 1 token ≈ 4 characters):
-
-```bash
-ESTIMATED_TOKENS=$((DIFF_SIZE / 4))
-```
-
-### Prioritized Files Output:
-
-* Sorted by priority, then file size.
-* Only included if total token count stays below `6000`.
-* Review summary added to `focused_diff.txt`
-
-### Final Check:
-
-If total tokens still > 6000:
-
-```bash
-head -c 20000 pr_diff.txt > truncated.txt
-```
-
----
-
-## Step 4: Review PR with GitHub Models
-
-Uses the GitHub Models API to post a review comment.
-
-### Prompt Structure Sent to Model:
-
-| Section                      | Content Details                       |
-| ---------------------------- | ------------------------------------- |
-| `## Code Review Summary`     | High-level summary                    |
-| `## Critical Issues`         | Blocking problems                     |
-| `## Code Quality Analysis`   | Security, Performance, Best Practices |
-| `## Detailed Findings`       | Tabular issues                        |
-| `## Code Examples`           | Before/After code with explanations   |
-| `## Testing Recommendations` | Test ideas                            |
-| `## Documentation Notes`     | Documentation suggestions             |
-
-### Model Call Example:
-
-```js
-fetch('https://models.github.ai/inference/chat/completions', {
-  method: 'POST',
-  headers: {
-    'Authorization': `Bearer ${{ secrets.GH_PAT_MODELS }}`,
-    ...
-  },
-  body: JSON.stringify({
-    model: "gpt-4.1-nano",
-    messages: [...],
-    temperature: 0.1,
-    max_tokens: 4000
-  })
-})
-```
-
----
-
-## Fallback: Graceful Failure Handling
-
-If the diff is too large for GPT:
-
-* Parse filenames from diff
-* Show summary stats (lines added/removed, file size)
-* Post fallback message with:
-
-  * Review checklist
-  * Manual review strategy
-
-```markdown
-## AI Code Review - Large Diff Analysis
-...
-- [ ] Check for hardcoded secrets
-- [ ] Optimize database queries
-...
-```
-
----
-
-## Step 5: Display Final Stats
-
-For debugging and transparency:
-
-```bash
-wc -c < pr_diff.txt  # Byte size
-wc -l < pr_diff.txt  # Line count
-```
-
-Shows if the final diff obeys the token limit (\~6700 tokens max).
-
----
-
-## Summary Table
-
-| Feature                       | Status       |
-| ----------------------------- | ------------ |
-| Smart diff prioritization     | ✅ Enabled    |
-| File-based categorization     | ✅ Advanced   |
-| Token-safe fallbacks          | ✅ Included   |
-| Markdown review formatting    | ✅ Structured |
-| Graceful API error handling   | ✅ Robust     |
-| Final logging and diagnostics | ✅ Verbose    |
-
-
----
-
-## Related Files Generated
-
-| File                    | Description                       |
-| ----------------------- | --------------------------------- |
-| `pr_diff.txt`           | Full or focused diff for LLM      |
-| `focused_diff.txt`      | Diff after smart prioritization   |
-| `sorted_files.txt`      | File list sorted by priority/size |
-| `priority_analysis.txt` | Token and category for each file  |
+This project is licensed under the [MIT License](LICENSE).
