@@ -2,7 +2,10 @@
 name: Build and Push Test Image
 
 on:
-  workflow_dispatch:
+    push:
+        branches:
+        - keployAI
+    workflow_dispatch:
 
 jobs:
   build-and-push-test-image:
