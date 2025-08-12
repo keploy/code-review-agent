@@ -1,54 +1,50 @@
 name: 'Smart AI Code Review'
-description: 'AI-powered code review with intelligent diff prioritization and GitHub Models integration'
+description: 'Provides automated, AI-powered code reviews on pull requests with a resilient fallback system using GitHub Models and Ollama.'
 author: 'EuclidStellar'
-
-inputs:
-  github-token:
-    description: 'GitHub token with pull-requests:write and models:read permissions'
-    required: true
-  model:
-    description: 'AI model to use'
-    required: false
-    default: 'gpt-4o-mini'
-  max-tokens:
-    description: 'Maximum tokens for diff analysis'
-    required: false
-    default: '6700'
-  temperature:
-    description: 'AI model temperature'
-    required: false
-    default: '0.1'
-  ignore-patterns:
-    description: 'Comma-separated patterns to ignore'
-    required: false
-    default: '*.md,node_modules/**'
-  include-patterns:
-    description: 'Comma-separated patterns to include'
-    required: false
-  # New Ollama inputs
-  enable-ollama:
-    description: 'Enable Ollama as fallback'
-    required: false
-    default: 'true'
-  ollama-model:
-    description: 'Ollama model to use for fallback'
-    required: false
-    default: 'qwen2.5:7b'
-  use-ollama-fallback:
-    description: 'Use Ollama when GitHub Models fails'
-    required: false
-    default: 'true'
-
-outputs:
-  review-posted:
-    description: 'Whether review was successfully posted'
-  review-provider:
-    description: 'Which provider was used (github-models, ollama, fallback)'
-
-runs:
-  using: 'docker'
-  image: 'Dockerfile'
 
 branding:
   icon: 'git-pull-request'
   color: 'blue'
+
+inputs:
+  github-token:
+    description: 'Required. The GITHUB_TOKEN secret.'
+    required: true
+  model:
+    description: 'The primary AI model to use (e.g., from GitHub Models).'
+    required: false
+    default: 'gpt-4o-mini'
+  ollama-model:
+    description: 'The Ollama model to use as a fallback if the primary model fails.'
+    required: false
+    default: 'qwen2:7b'
+  use-ollama-fallback:
+    description: 'Enable the Ollama fallback system.'
+    required: false
+    default: 'true'
+  max-tokens:
+    description: 'The token limit for smart diff prioritization. Diffs larger than this will be summarized.'
+    required: false
+    default: '8000'
+  temperature:
+    description: 'The creativity/randomness of the AI model (0.0 to 2.0).'
+    required: false
+    default: '0.2'
+  ignore-patterns:
+    description: 'Comma-separated list of file patterns to ignore (e.g., "*.md,dist/**").'
+    required: false
+    default: ''
+  include-patterns:
+    description: 'Comma-separated list of file patterns to force-include (overrides ignore).'
+    required: false
+    default: ''
+
+outputs:
+  review-posted:
+    description: '"true" if a review comment was successfully posted, otherwise "false".'
+  review-provider:
+    description: 'The provider that generated the review (github-models, ollama, or static-fallback).'
+
+runs:
+  using: 'docker'
+  image: 'Dockerfile'

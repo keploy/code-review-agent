@@ -1,0 +1,11 @@
+# filepath: .gitignore
+# Binaries
+main
+code-review-agent
+
+# Log files
+*.log
+ollama_serve.log
+
+# IDE settings
+.vscode/

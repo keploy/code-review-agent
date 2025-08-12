@@ -3,7 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
-	"log"
+	"os"
 	"os/exec"
 	"strings"
 
@@ -15,20 +15,26 @@ import (
 )
 
 func main() {
-	ctx := context.Background()
 	logger := utils.NewLogger()
+	if err := run(logger); err != nil {
+		logger.Error("Action failed: %v", err)
+		os.Exit(1)
+	}
+	logger.Info("✅ Action completed successfully.")
+}
 
+func run(logger *utils.Logger) error {
+	ctx := context.Background()
 	logger.Info("Starting Smart AI Code Review Action v1.0.0")
 
 	// Fix git ownership issue first
-	setupGitSafeDirectory()
+	setupGitSafeDirectory(logger)
 
 	// Load configuration
 	cfg, err := config.LoadFromEnv()
 	if err != nil {
-		log.Fatalf("Failed to load configuration: %v", err)
+		return fmt.Errorf("failed to load configuration: %w", err)
 	}
-
 	logger.Info("Configuration loaded: Model=%s, MaxTokens=%d, OllamaFallback=%v",
 		cfg.Model, cfg.MaxTokens, cfg.UseOllamaFallback)
 
@@ -36,69 +42,65 @@ func main() {
 	ghClient := github.NewClient(cfg.GitHubToken, cfg.RepoOwner, cfg.RepoName)
 	diffAnalyzer := diff.NewDiffAnalyzer(cfg.MaxTokens, cfg.IgnorePatterns, cfg.IncludePatterns)
 
-	// Get PR diff
+	// Get and analyze PR diff
 	logger.Info("Fetching PR diff for %s...%s", cfg.BaseRef, cfg.HeadRef)
 	prDiff, err := diffAnalyzer.GetPRDiff(cfg.BaseRef, cfg.HeadRef)
 	if err != nil {
-		log.Fatalf("Failed to get PR diff: %v", err)
+		return fmt.Errorf("failed to get PR diff: %w", err)
 	}
-
 	if prDiff == "" {
-		logger.Info("No changes found, skipping review")
+		logger.Info("No changes found, skipping review.")
 		logger.GitHubOutput("review-posted", "false")
-		return
+		return nil
 	}
 
-	// Analyze and prioritize diff
 	logger.Info("Analyzing diff (original size: %d bytes)", len(prDiff))
 	prioritizedDiff, err := diffAnalyzer.AnalyzeAndPrioritize(prDiff, cfg.BaseRef, cfg.HeadRef)
 	if err != nil {
-		log.Fatalf("Failed to analyze diff: %v", err)
+		return fmt.Errorf("failed to analyze diff: %w", err)
 	}
-
 	logger.Info("Prioritized diff size: %d bytes (~%d tokens)", len(prioritizedDiff), len(prioritizedDiff)/4)
 
-	// Try GitHub Models first
-	review, err := tryGitHubModels(cfg, prioritizedDiff, logger)
-	if err == nil {
-		// Success with GitHub Models
-		if err := ghClient.PostComment(ctx, cfg.PRNumber, review); err != nil {
-			log.Fatalf("Failed to post review: %v", err)
-		}
-		logger.Info("✅ GitHub Models review posted successfully")
-		logger.GitHubOutput("review-posted", "true")
-		logger.GitHubOutput("review-provider", "github-models")
-		return
+	// --- Review Logic ---
+	review, provider, err := generateReview(cfg, prioritizedDiff, logger)
+	if err != nil {
+		logger.Error("All review providers failed. Posting static fallback. Final error: %v", err)
+		review = generateFallbackReview(prioritizedDiff, err.Error())
+		provider = "static-fallback"
 	}
 
-	// GitHub Models failed, try Ollama fallback
+	// Post the final review comment
+	if err := ghClient.PostComment(ctx, cfg.PRNumber, review); err != nil {
+		return fmt.Errorf("failed to post final comment: %w", err)
+	}
+
+	logger.Info("Posted review using provider: %s", provider)
+	logger.GitHubOutput("review-posted", "true")
+	logger.GitHubOutput("review-provider", provider)
+	return nil
+}
+
+func generateReview(cfg *config.Config, diff string, logger *utils.Logger) (string, string, error) {
+	// Attempt 1: GitHub Models
+	logger.Info("🤖 Attempting review with GitHub Models (%s)...", cfg.Model)
+	ghReview, err := tryGitHubModels(cfg, diff, logger)
+	if err == nil {
+		return ghReview, "github-models", nil
+	}
 	logger.Error("GitHub Models failed: %v", err)
 
+	// Attempt 2: Ollama Fallback
 	if cfg.UseOllamaFallback {
-		logger.Info("🔄 Trying Ollama fallback...")
-		review, err := tryOllamaFallback(cfg, prioritizedDiff, logger)
+		logger.Info("🔄 Attempting review with Ollama fallback (%s)...", cfg.OllamaModel)
+		ollamaReview, err := tryOllamaFallback(cfg, diff, logger)
 		if err == nil {
-			// Success with Ollama
-			if err := ghClient.PostComment(ctx, cfg.PRNumber, review); err != nil {
-				log.Fatalf("Failed to post Ollama review: %v", err)
-			}
-			logger.Info("✅ Ollama fallback review posted successfully")
-			logger.GitHubOutput("review-posted", "true")
-			logger.GitHubOutput("review-provider", "ollama")
-			return
+			return ollamaReview, "ollama", nil
 		}
 		logger.Error("Ollama fallback also failed: %v", err)
+		return "", "", err // Return the last error
 	}
 
-	// Both failed, post static fallback
-	logger.Info("🔄 Using static fallback review...")
-	fallbackReview := generateFallbackReview(prioritizedDiff, fmt.Sprintf("GitHub Models: %v, Ollama: %v", err, err))
-	if err := ghClient.PostComment(ctx, cfg.PRNumber, fallbackReview); err != nil {
-		log.Fatalf("Failed to post fallback review: %v", err)
-	}
-	logger.Info("Posted static fallback review")
-	logger.GitHubOutput("review-posted", "true")
-	logger.GitHubOutput("review-provider", "fallback")
+	return "", "", err // Return the original error if Ollama is disabled
 }
 
 func tryGitHubModels(cfg *config.Config, diff string, logger *utils.Logger) (string, error) {
@@ -156,7 +158,7 @@ func isQuotaError(err error) bool {
 		strings.Contains(errStr, "insufficient")
 }
 
-func setupGitSafeDirectory() {
+func setupGitSafeDirectory(logger *utils.Logger) {
 	// Configure git to trust the workspace directory
 	commands := [][]string{
 		{"git", "config", "--global", "--add", "safe.directory", "/github/workspace"},

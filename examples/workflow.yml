@@ -17,6 +17,7 @@ jobs:
         with:
           github-token: ${{ secrets.GH_FINE_GRAINED_PAT }}
           model: 'gpt-4.1-nano'
+          ollama-model: 'qwen2:7b'
           max-tokens: 6700
           temperature: 0.1
           ignore-patterns: '*.md,node_modules/**,dist/**'
