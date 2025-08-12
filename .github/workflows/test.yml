@@ -50,7 +50,7 @@ jobs:
       - name: Test Pre-built Action from GHCR
         # FIX: Instead of building locally with 'uses: ./', we now pull the pre-built
         # image from the GitHub Container Registry, just like a real user would.
-        uses: docker://ghcr.io/euclidstellar/code-review-agent:test
+        uses: docker://ghcr.io/euclidstellar/testtt:test
         with:
           # BEST PRACTICE: Use the built-in GITHUB_TOKEN. It's more secure
           # and avoids potential formatting issues with custom secrets.
