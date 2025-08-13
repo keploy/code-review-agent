@@ -1,4 +1,4 @@
-package reviewer
+package utils
 
 import (
 	"bytes"
@@ -118,16 +118,6 @@ func (c *GitHubModelsClient) buildPrompt(diff string) string {
 
 ## Code Review Summary
 Brief overview of changes and overall quality assessment.
-**Include a small Mermaid sequence diagram summarizing the PR.** The diagram should show the developer's action and the resulting line changes.
-
-Example Mermaid Diagram:
-`+"```mermaid\n"+`sequenceDiagram
-    participant D as Developer
-    participant R as Repository
-    D->>R: Push Changes
-    Note right of R: +%d lines added<br>-%d lines removed
-    R-->>D: PR Ready for Review
-`+"```\n"+`
 
 ## Critical Issues
 List high-priority issues requiring immediate attention with clear impact explanations.
@@ -165,6 +155,8 @@ Present corrected versions with detailed explanations.
 ## Testing Recommendations
 Specific test suggestions for the changes.
 
+## Documentation Notes
+Documentation improvements or additions needed.
 
 ---
 
