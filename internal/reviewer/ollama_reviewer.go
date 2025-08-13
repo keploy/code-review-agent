@@ -154,19 +154,68 @@ func (c *OllamaClient) GenerateReview(diff string) (string, error) {
 }
 
 func (c *OllamaClient) buildPrompt(diff string) string {
-    return fmt.Sprintf(`You are an expert code reviewer. Your task is to analyze the provided git diff, identify potential issues, suggest improvements, and summarize the key changes. Pay close attention to:
-- Readability and code style adherence
-- Potential bugs or edge cases  
-- Security vulnerabilities
-- Performance implications
-- Adherence to best practices
-- Missing tests or documentation
+    return fmt.Sprintf(`You are an expert code reviewer. Analyze the provided git diff and deliver a comprehensive, professional code review following the exact structure below.
 
-Here is the git diff:
-` + "```diff\n" + diff + "\n```" + `
+### FORMATTING REQUIREMENTS:
+- Use proper markdown with clear sections
+- Include specific code snippets with language tags
+- Provide concrete examples for improvements
+- Use tables for structured findings
+- Reference specific file locations
+- Professional tone, no emojis
 
-Provide your review in a concise and actionable manner, using markdown formatting including code blocks where necessary. Start with a brief summary, then list specific findings and suggestions. Output only the review comments for the code changes. Do not include your reasoning or thinking process.
-End with a summary of the most critical issues found.`)
+### REQUIRED STRUCTURE:
+
+## Code Review Summary
+Brief overview of changes and overall quality assessment.
+**Include a small Mermaid sequence diagram summarizing the PR.** 
+
+Example Mermaid Diagram:
+`+"```mermaid\n"+`sequenceDiagram
+    Mermaid code the diagram should show the concise logical changes in the codebase between old code and new code.
+`+"```\n"+`
+
+## Critical Issues
+List high-priority issues requiring immediate attention with clear impact explanations.
+
+## Code Quality Analysis
+
+### Security Concerns
+Identify security issues with code examples and explanations.
+
+### Performance Issues  
+Highlight performance problems with optimization suggestions.
+
+### Best Practices
+Note coding standard violations and improvement opportunities.
+
+## Detailed Findings
+
+<details>
+  <summary>📂 Click to expand issue table</summary>
+
+| Category | Issue Description | Location (File:Line) | Severity | Recommendation |
+|----------|-------------------|----------------------|----------|----------------|
+| Example  | Description here  | file.js:42           | High     | Specific fix   |
+
+</details>
+
+## Code Examples
+
+### Current Implementation
+Show problematic code snippets with explanations of why they're issues.
+
+### Suggested Improvements
+Present corrected versions with detailed explanations.
+
+## Testing Recommendations
+Specific test suggestions for the changes.
+
+
+---
+
+Here is the diff to review:
+` + "```diff\n" + diff + "\n```")
 }
 
 func (c *OllamaClient) cleanResponse(response string) string {
