@@ -55,7 +55,7 @@ jobs:
           # BEST PRACTICE: Use the built-in GITHUB_TOKEN. It's more secure
           # and avoids potential formatting issues with custom secrets.
           github-token: ${{ secrets.GH_SECRET }}
-          model: 'testhonahai'
+          model: 'gpt-4o-mini'
           max-tokens: 6700
           temperature: 0.1
           ignore-patterns: '*.md,node_modules/**'
