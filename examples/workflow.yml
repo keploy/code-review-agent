@@ -1,8 +1,8 @@
-name: Smart AI Code Review
+name: KeployAI Code Review
 
 on:
   pull_request:
-    types: [opened, reopened, synchronize]
+    types: [opened, synchronize, reopened]
 
 permissions:
   contents: read
@@ -10,15 +10,14 @@ permissions:
 
 jobs:
   ai-review:
-    name: AI Code Review
     runs-on: ubuntu-latest
     steps:
-      - uses: your-username/code-review-agent@v1
+      - name: Checkout Repository
+        uses: actions/checkout@v4
         with:
-          github-token: ${{ secrets.GH_FINE_GRAINED_PAT }}
-          model: 'gpt-4.1-nano'
-          ollama-model: 'qwen2:7b'
-          max-tokens: 6700
-          temperature: 0.1
-          ignore-patterns: '*.md,node_modules/**,dist/**'
-          include-patterns: '*.js,*.ts,*.go,*.py'
+          fetch-depth: 0 # Required to get the full git history for diffing
+
+      - name: Run Smart AI Code Review
+        uses: euclidstellar/code-review-agent@v1
+        with:
+          github-token: ${{ secrets.GH_TOKEN }}
