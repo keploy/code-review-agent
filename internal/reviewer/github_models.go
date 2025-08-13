@@ -118,15 +118,11 @@ func (c *GitHubModelsClient) buildPrompt(diff string) string {
 
 ## Code Review Summary
 Brief overview of changes and overall quality assessment.
-**Include a small Mermaid sequence diagram summarizing the PR.** The diagram should show the developer's action and the resulting line changes.
+**Include a small Mermaid sequence diagram summarizing the PR.** 
 
 Example Mermaid Diagram:
 `+"```mermaid\n"+`sequenceDiagram
-    participant D as Developer
-    participant R as Repository
-    D->>R: Push Changes
-    Note right of R: +%d lines added<br>-%d lines removed
-    R-->>D: PR Ready for Review
+    Mermaid code the diagram should show the concise logical changes in the codebase between old code and new code.
 `+"```\n"+`
 
 ## Critical Issues
