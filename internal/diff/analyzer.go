@@ -28,7 +28,7 @@ type DiffAnalyzer struct {
 func NewDiffAnalyzer(maxTokens int, ignorePatterns, includePatterns []string) *DiffAnalyzer {
     return &DiffAnalyzer{
         maxTokens:       maxTokens,
-        safeTokens:      maxTokens - 700, // Conservative buffer
+        safeTokens:      maxTokens - 1000, // Conservative buffer
         ignorePatterns:  ignorePatterns,
         includePatterns: includePatterns,
     }

@@ -3,11 +3,14 @@ package reviewer
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
 	"strings"
 )
+
+var ErrTokenLimitExceeded = errors.New("token limit exceeded")
 
 type GitHubModelsClient struct {
     token      string
@@ -84,9 +87,8 @@ func (c *GitHubModelsClient) GenerateReview(diff, model string, temperature floa
     }
 
     if resp.StatusCode != http.StatusOK {
-        // MISSING: Enhanced fallback like YAML
         if resp.StatusCode == 413 || strings.Contains(string(body), "tokens_limit_reached") {
-            return c.generateLargeDiffFallback(diff), nil
+            return "", ErrTokenLimitExceeded
         }
         return "", fmt.Errorf("API error: %d - %s", resp.StatusCode, string(body))
     }

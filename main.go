@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"os/exec"
@@ -62,7 +63,7 @@ func run(logger *utils.Logger) error {
 	logger.Info("Prioritized diff size: %d bytes (~%d tokens)", len(prioritizedDiff), len(prioritizedDiff)/4)
 
 	// --- Review Logic ---
-	review, provider, err := generateReview(cfg, prioritizedDiff, logger)
+	review, provider, err := generateReview(ctx, cfg, prioritizedDiff, ghClient, logger)
 	if err != nil {
 		logger.Error("All review providers failed. Posting static fallback. Final error: %v", err)
 		review = generateFallbackReview(prioritizedDiff, err.Error())
@@ -80,7 +81,7 @@ func run(logger *utils.Logger) error {
 	return nil
 }
 
-func generateReview(cfg *config.Config, diff string, logger *utils.Logger) (string, string, error) {
+func generateReview(ctx context.Context, cfg *config.Config, diff string, ghClient *github.Client, logger *utils.Logger) (string, string, error) {
 	// Attempt 1: GitHub Models
 	logger.Info("🤖 Attempting review with GitHub Models (%s)...", cfg.Model)
 	ghReview, err := tryGitHubModels(cfg, diff, logger)
@@ -88,6 +89,15 @@ func generateReview(cfg *config.Config, diff string, logger *utils.Logger) (stri
 		return ghReview, "github-models", nil
 	}
 	logger.Error("GitHub Models failed: %v", err)
+
+	// Check if it's a token limit error
+	if errors.Is(err, reviewer.ErrTokenLimitExceeded) {
+		// Post the friendly "coffee" message
+		coffeeMessage := "Hey, it looks like your PR diff is very big, but don't worry, we got you! Grab a coffee, and before you finish it, your PR review will be ready. ☕"
+		if postErr := ghClient.PostComment(ctx, cfg.PRNumber, coffeeMessage); postErr != nil {
+			logger.Error("Failed to post 'coffee' comment: %v", postErr)
+		}
+	}
 
 	// Attempt 2: Ollama Fallback
 	if cfg.UseOllamaFallback {
@@ -110,7 +120,11 @@ func tryGitHubModels(cfg *config.Config, diff string, logger *utils.Logger) (str
 	review, err := aiClient.GenerateReview(diff, cfg.Model, cfg.Temperature, 4000)
 
 	if err != nil {
-		// Check for rate limit or quota errors
+		// Check for our specific token limit error
+		if errors.Is(err, reviewer.ErrTokenLimitExceeded) {
+			return "", err // Pass the specific error up
+		}
+		// Check for other rate limit or quota errors
 		if isRateLimitError(err) || isQuotaError(err) {
 			return "", fmt.Errorf("rate limit/quota exceeded: %w", err)
 		}
