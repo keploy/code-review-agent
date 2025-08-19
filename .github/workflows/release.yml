@@ -6,7 +6,7 @@ name: Publish Docker Image to GHCR
 # This ensures that images are only built and pushed for official, versioned releases.
 on:
   release:
-    types: [published]
+    types: [edited , created , published] # Triggers on release creation, editing, or publishing.
 
 # Defines the jobs that will be executed as part of the workflow.
 jobs:
