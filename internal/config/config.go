@@ -32,23 +32,22 @@ type Config struct {
 func LoadFromEnv() (*Config, error) {
     cfg := &Config{
         // Try both hyphen and underscore versions
-        GitHubToken:     getEnvWithFallback("INPUT_GITHUB-TOKEN", "INPUT_GITHUB_TOKEN", ""),
-        ModelsToken:     getEnvWithFallback("INPUT_GITHUB-TOKEN", "INPUT_GITHUB_TOKEN", ""), // Same token
-        Model:           getEnv("INPUT_MODEL", "gpt-4.1-nano"),
-        MaxTokens:       getEnvIntWithFallback("INPUT_MAX-TOKENS", "INPUT_MAX_TOKENS", 6700),
-        Temperature:     getEnvFloatWithFallback("INPUT_TEMPERATURE", "INPUT_TEMPERATURE", 0.1),
-        IgnorePatterns:  strings.Split(getEnvWithFallback("INPUT_IGNORE-PATTERNS", "INPUT_IGNORE_PATTERNS", "*.md,node_modules/**"), ","),
-        IncludePatterns: strings.Split(getEnvWithFallback("INPUT_INCLUDE-PATTERNS", "INPUT_INCLUDE_PATTERNS", ""), ","),
-        RepoOwner:       getEnv("GITHUB_REPOSITORY_OWNER", ""),
-        RepoName:        getRepoName(),
-        PRNumber:        getPRNumber(),
-        BaseRef:         getEnv("GITHUB_BASE_REF", ""),
-        HeadRef:         getEnv("GITHUB_HEAD_REF", ""),
+       GitHubToken:      getEnvValue("", "INPUT_GITHUB-TOKEN", "INPUT_GITHUB_TOKEN").(string),
+        ModelsToken:     getEnvValue("", "INPUT_GITHUB-TOKEN", "INPUT_GITHUB_TOKEN").(string),
+        Model:           getEnvValue("gpt-4o-mini", "INPUT_MODEL").(string),
+        MaxTokens:       getEnvValue(8000, "INPUT_MAX-TOKENS", "INPUT_MAX_TOKENS").(int),
+        Temperature:     getEnvValue(0.2, "INPUT_TEMPERATURE", "INPUT_TEMPERATURE").(float64),
+        IgnorePatterns:  strings.Split(getEnvValue("", "INPUT_IGNORE-PATTERNS", "INPUT_IGNORE_PATTERNS").(string), ","),
+        IncludePatterns: strings.Split(getEnvValue("", "INPUT_INCLUDE-PATTERNS", "INPUT_INCLUDE_PATTERNS").(string), ","),
 
-        // Ollama configuration
-        OllamaModel:       getEnv("INPUT_OLLAMA_MODEL", "gemma3n:e4b"),
-        EnableOllama:      getEnvBool("INPUT_ENABLE_OLLAMA", true),
-        UseOllamaFallback: getEnvBool("INPUT_USE_OLLAMA_FALLBACK", true),
+        RepoOwner: getEnvValue("", "GITHUB_REPOSITORY_OWNER").(string),
+        RepoName:  getRepoName(),
+        PRNumber:  getPRNumber(),
+        BaseRef:   getEnvValue("", "GITHUB_BASE_REF").(string),
+        HeadRef:   getEnvValue("", "GITHUB_HEAD_REF").(string),
+
+        OllamaModel:       getEnvValue("qwen2:7b", "INPUT_OLLAMA-MODEL").(string),
+        UseOllamaFallback: getEnvValue(true, "INPUT_USE-OLLAMA-FALLBACK").(bool),
     }
 
     if err := cfg.validate(); err != nil {
@@ -64,41 +63,38 @@ func (c *Config) validate() error {
     }
     return nil
 }
-
-func getEnv(key, defaultValue string) string {
-    if value := os.Getenv(key); value != "" {
-        return value
+func getEnvValue(defaultValue interface{}, keys ...string) interface{} {
+    var valueStr string
+    for _, key := range keys {
+        if v, exists := os.LookupEnv(key); exists {
+            valueStr = v
+            break
+        }
     }
-    return defaultValue
-}
 
-func getEnvInt(key string, defaultValue int) int {
-    if value := os.Getenv(key); value != "" {
-        if intValue, err := strconv.Atoi(value); err == nil {
+    if valueStr == "" {
+        return defaultValue
+    }
+
+    // Parse the value based on the type of the default value.
+    switch defaultValue.(type) {
+    case string:
+        return valueStr
+    case int:
+        if intValue, err := strconv.Atoi(valueStr); err == nil {
             return intValue
         }
-    }
-    return defaultValue
-}
-
-func getEnvFloat(key string, defaultValue float64) float64 {
-    if value := os.Getenv(key); value != "" {
-        if floatValue, err := strconv.ParseFloat(value, 64); err == nil {
+    case float64:
+        if floatValue, err := strconv.ParseFloat(valueStr, 64); err == nil {
             return floatValue
         }
+    case bool:
+        if boolValue, err := strconv.ParseBool(valueStr); err == nil {
+            return boolValue
+        }
     }
-    return defaultValue
-}
 
-func getEnvBool(key string, defaultValue bool) bool {
-    if value := os.Getenv(key); value != "" {
-        if value == "true" || value == "1" {
-            return true
-        }
-        if value == "false" || value == "0" {
-            return false
-        }
-    }
+    // If parsing fails, return the default value.
     return defaultValue
 }
 
@@ -150,43 +146,4 @@ func getPRNumber() int {
     }
     
     return 0
-}
-
-// Helper functions
-func getEnvWithFallback(primary, fallback, defaultValue string) string {
-    if value := os.Getenv(primary); value != "" {
-        return value
-    }
-    if value := os.Getenv(fallback); value != "" {
-        return value
-    }
-    return defaultValue
-}
-
-func getEnvIntWithFallback(primary, fallback string, defaultValue int) int {
-    if value := os.Getenv(primary); value != "" {
-        if intValue, err := strconv.Atoi(value); err == nil {
-            return intValue
-        }
-    }
-    if value := os.Getenv(fallback); value != "" {
-        if intValue, err := strconv.Atoi(value); err == nil {
-            return intValue
-        }
-    }
-    return defaultValue
-}
-
-func getEnvFloatWithFallback(primary, fallback string, defaultValue float64) float64 {
-    if value := os.Getenv(primary); value != "" {
-        if floatValue, err := strconv.ParseFloat(value, 64); err == nil {
-            return floatValue
-        }
-    }
-    if value := os.Getenv(fallback); value != "" {
-        if floatValue, err := strconv.ParseFloat(value, 64); err == nil {
-            return floatValue
-        }
-    }
-    return defaultValue
 }
