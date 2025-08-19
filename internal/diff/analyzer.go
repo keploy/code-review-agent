@@ -18,15 +18,20 @@ type FileAnalysis struct {
     Size     int
 }
 
-type DiffAnalyzer struct {
-    maxTokens     int
-    safeTokens    int
-    ignorePatterns []string
+type Analyzer interface {
+    GetPRDiff(baseRef, headRef string) (string, error)
+    AnalyzeAndPrioritize(fullDiff string, baseRef, headRef string) (string, error)
+}
+
+type diffAnalyzer struct {
+    maxTokens       int
+    safeTokens      int
+    ignorePatterns  []string
     includePatterns []string
 }
 
-func NewDiffAnalyzer(maxTokens int, ignorePatterns, includePatterns []string) *DiffAnalyzer {
-    return &DiffAnalyzer{
+func NewDiffAnalyzer(maxTokens int, ignorePatterns, includePatterns []string) Analyzer {
+    return &diffAnalyzer{
         maxTokens:       maxTokens,
         safeTokens:      maxTokens - 1000, // Conservative buffer
         ignorePatterns:  ignorePatterns,
@@ -34,7 +39,7 @@ func NewDiffAnalyzer(maxTokens int, ignorePatterns, includePatterns []string) *D
     }
 }
 
-func (da *DiffAnalyzer) GetPRDiff(baseRef, headRef string) (string, error) {
+func (da *diffAnalyzer) GetPRDiff(baseRef, headRef string) (string, error) {
     // Fetch the base branch
     fmt.Printf("🔄 Fetching base branch: %s\n", baseRef)
     cmd := exec.Command("git", "fetch", "origin", baseRef)
@@ -60,7 +65,7 @@ func (da *DiffAnalyzer) GetPRDiff(baseRef, headRef string) (string, error) {
     return string(output), nil
 }
 
-func (da *DiffAnalyzer) AnalyzeAndPrioritize(fullDiff string, baseRef, headRef string) (string, error) {
+func (da *diffAnalyzer) AnalyzeAndPrioritize(fullDiff string, baseRef, headRef string) (string, error) {
     estimatedTokens := len(fullDiff) / 4
     
     if estimatedTokens <= da.maxTokens {
@@ -97,7 +102,7 @@ func (da *DiffAnalyzer) AnalyzeAndPrioritize(fullDiff string, baseRef, headRef s
     return da.buildPrioritizedDiff(analyses, baseRef, headRef)
 }
 
-func (da *DiffAnalyzer) getChangedFiles(baseRef, headRef string) ([]string, error) {
+func (da *diffAnalyzer) getChangedFiles(baseRef, headRef string) ([]string, error) {
     // FIX: Use consistent remote branch references
     cmd := exec.Command("git", "diff", "--name-only", fmt.Sprintf("origin/%s...origin/%s", baseRef, headRef))
     output, err := cmd.CombinedOutput()
@@ -115,7 +120,7 @@ func (da *DiffAnalyzer) getChangedFiles(baseRef, headRef string) ([]string, erro
     return validFiles, nil
 }
 
-func (da *DiffAnalyzer) analyzeFile(filepath, baseRef, headRef string) (FileAnalysis, error) {
+func (da *diffAnalyzer) analyzeFile(filepath, baseRef, headRef string) (FileAnalysis, error) {
     // FIX: Use consistent remote branch references
     cmd := exec.Command("git", "diff", fmt.Sprintf("origin/%s...origin/%s", baseRef, headRef), "--", filepath)
     output, err := cmd.CombinedOutput()
@@ -136,7 +141,7 @@ func (da *DiffAnalyzer) analyzeFile(filepath, baseRef, headRef string) (FileAnal
     }, nil
 }
 
-func (da *DiffAnalyzer) categorizeFile(filepath string) (int, string) {
+func (da *diffAnalyzer) categorizeFile(filepath string) (int, string) {
     // Core application files - Priority 1
     corePatterns := []string{
         `\.(js|jsx|ts|tsx|py|java|go|rs|php|rb|swift|kt|scala|cs|cpp|c|h|hpp)$`,
@@ -195,7 +200,7 @@ func (da *DiffAnalyzer) categorizeFile(filepath string) (int, string) {
     return 5, "Other"
 }
 
-func (da *DiffAnalyzer) shouldIncludeFile(filepath string) bool {
+func (da *diffAnalyzer) shouldIncludeFile(filepath string) bool {
     // Check ignore patterns
     for _, pattern := range da.ignorePatterns {
         if pattern != "" {
@@ -218,7 +223,7 @@ func (da *DiffAnalyzer) shouldIncludeFile(filepath string) bool {
     return true
 }
 
-func (da *DiffAnalyzer) buildPrioritizedDiff(analyses []FileAnalysis, baseRef, headRef string) (string, error) {
+func (da *diffAnalyzer) buildPrioritizedDiff(analyses []FileAnalysis, baseRef, headRef string) (string, error) {
     var result strings.Builder
     currentTokens := 150 // Header overhead
     filesIncluded := 0
