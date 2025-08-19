@@ -91,7 +91,7 @@ func generateReview(ctx context.Context, cfg *config.Config, diff string, ghClie
 	logger.Error("GitHub Models failed: %v", err)
 
 	// Check if it's a token limit error
-	if errors.Is(err, reviewer.ErrTokenLimitExceeded) {
+	if errors.Is(err, config.ErrTokenLimitExceeded) {
 		// Post the friendly "coffee" message
 		coffeeMessage := "Hey, it looks like your PR diff is very big, but don't worry, we got you! Grab a coffee, and before you finish it, your PR review will be ready. ☕"
 		if postErr := ghClient.PostComment(ctx, cfg.PRNumber, coffeeMessage); postErr != nil {
@@ -102,7 +102,7 @@ func generateReview(ctx context.Context, cfg *config.Config, diff string, ghClie
 	// Attempt 2: Ollama Fallback
 	if cfg.UseOllamaFallback {
 		logger.Info("🔄 Attempting review with Ollama fallback (%s)...", cfg.OllamaModel)
-		ollamaReview, err := tryOllamaFallback(cfg, diff, logger)
+		ollamaReview, err := tryOllamaFallback(ctx, cfg, diff, logger)
 		if err == nil {
 			return ollamaReview, "ollama", nil
 		}
@@ -121,7 +121,7 @@ func tryGitHubModels(cfg *config.Config, diff string, logger *utils.Logger) (str
 
 	if err != nil {
 		// Check for our specific token limit error
-		if errors.Is(err, reviewer.ErrTokenLimitExceeded) {
+		if errors.Is(err, config.ErrTokenLimitExceeded) {
 			return "", err // Pass the specific error up
 		}
 		// Check for other rate limit or quota errors
@@ -134,20 +134,20 @@ func tryGitHubModels(cfg *config.Config, diff string, logger *utils.Logger) (str
 	return review, nil
 }
 
-func tryOllamaFallback(cfg *config.Config, diff string, logger *utils.Logger) (string, error) {
+func tryOllamaFallback(ctx context.Context, cfg *config.Config, diff string, logger *utils.Logger) (string, error) {
 	logger.Info("🦙 Setting up Ollama with model %s", cfg.OllamaModel)
 
 	ollamaClient := reviewer.NewOllamaClient(cfg.OllamaModel)
 	defer ollamaClient.Cleanup()
 
 	// Setup Ollama (install, start service, pull model)
-	if err := ollamaClient.SetupOllama(); err != nil {
+	if err := ollamaClient.SetupOllama(ctx); err != nil {
 		return "", fmt.Errorf("failed to setup Ollama: %w", err)
 	}
 
 	// Generate review
 	logger.Info("🔄 Generating review with Ollama...")
-	review, err := ollamaClient.GenerateReview(diff)
+	review, err := ollamaClient.GenerateReview(ctx, diff)
 	if err != nil {
 		return "", fmt.Errorf("failed to generate Ollama review: %w", err)
 	}

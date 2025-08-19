@@ -2,6 +2,7 @@ package reviewer
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -38,11 +39,11 @@ func NewOllamaClient(model string) *OllamaClient {
     }
 }
 
-func (c *OllamaClient) SetupOllama() error {
+func (c *OllamaClient) SetupOllama(ctx context.Context) error {
     fmt.Println("🔧 Setting up Ollama...")
 
     // Install Ollama
-    cmd := exec.Command("bash", "-c", "curl -fsSL https://ollama.com/install.sh | sh")
+    cmd := exec.CommandContext(ctx, "bash", "-c", "curl -fsSL https://ollama.com/install.sh | sh")
     if output, err := cmd.CombinedOutput(); err != nil {
         return fmt.Errorf("failed to install Ollama: %w (output: %s)", err, string(output))
     }
@@ -63,7 +64,7 @@ func (c *OllamaClient) SetupOllama() error {
     defer logFile.Close()
 
     // Start the service using the absolute path
-    cmd = exec.Command(ollamaPath, "serve")
+    cmd = exec.CommandContext(ctx, ollamaPath, "serve")
     cmd.Stdout = logFile
     cmd.Stderr = logFile
 
@@ -75,7 +76,12 @@ func (c *OllamaClient) SetupOllama() error {
     fmt.Println("⏳ Waiting for Ollama service to be ready...")
     serviceReady := false
     for i := 0; i < 60; i++ {
-        if c.isServiceReady() {
+        select {
+        case <-ctx.Done():
+            return ctx.Err()
+        default:
+        }
+        if c.isServiceReady(ctx) {
             serviceReady = true
             break
         }
@@ -90,7 +96,7 @@ func (c *OllamaClient) SetupOllama() error {
 
     // Pull model using the absolute path
     fmt.Printf("📥 Pulling model %s...\n", c.model)
-    cmd = exec.Command(ollamaPath, "pull", c.model)
+    cmd = exec.CommandContext(ctx, ollamaPath, "pull", c.model)
     if output, err := cmd.CombinedOutput(); err != nil {
         return fmt.Errorf("failed to pull model %s: %w (output: %s)", c.model, err, string(output))
     }
@@ -99,8 +105,12 @@ func (c *OllamaClient) SetupOllama() error {
     return nil
 }
 
-func (c *OllamaClient) isServiceReady() bool {
-    resp, err := c.httpClient.Get(c.baseURL + "/api/tags")
+func (c *OllamaClient) isServiceReady(ctx context.Context) bool {
+    req, err := http.NewRequestWithContext(ctx, "GET", c.baseURL+"/api/tags", nil)
+    if err != nil {
+        return false
+    }
+    resp, err := c.httpClient.Do(req)
     if err != nil {
         return false
     }
@@ -108,121 +118,56 @@ func (c *OllamaClient) isServiceReady() bool {
     return resp.StatusCode == 200
 }
 
-func (c *OllamaClient) GenerateReview(diff string) (string, error) {
-    prompt := c.buildPrompt(diff)
-    
+func (c *OllamaClient) GenerateReview(ctx context.Context, diff string) (string, error) {
+    prompt := BuildReviewPrompt(diff)
+
     request := OllamaRequest{
         Model:  c.model,
         Prompt: prompt,
         Stream: false,
     }
-    
+
     jsonData, err := json.Marshal(request)
     if err != nil {
         return "", fmt.Errorf("failed to marshal request: %w", err)
     }
-    
-    req, err := http.NewRequest("POST", c.baseURL+"/api/generate", bytes.NewBuffer(jsonData))
+
+    req, err := http.NewRequestWithContext(ctx, "POST", c.baseURL+"/api/generate", bytes.NewBuffer(jsonData))
     if err != nil {
         return "", fmt.Errorf("failed to create request: %w", err)
     }
-    
+
     req.Header.Set("Content-Type", "application/json")
-    
+
     resp, err := c.httpClient.Do(req)
     if err != nil {
         return "", fmt.Errorf("failed to send request: %w", err)
     }
     defer resp.Body.Close()
-    
+
     if resp.StatusCode != http.StatusOK {
         body, _ := io.ReadAll(resp.Body)
         return "", fmt.Errorf("Ollama API error: %d - %s", resp.StatusCode, string(body))
     }
-    
+
     body, err := io.ReadAll(resp.Body)
     if err != nil {
         return "", fmt.Errorf("failed to read response: %w", err)
     }
-    
+
     var response OllamaResponse
     if err := json.Unmarshal(body, &response); err != nil {
         return "", fmt.Errorf("failed to unmarshal response: %w", err)
     }
-    
+
     return c.cleanResponse(response.Response), nil
-}
-
-func (c *OllamaClient) buildPrompt(diff string) string {
-    return fmt.Sprintf(`You are an expert code reviewer. Analyze the provided git diff and deliver a comprehensive, professional code review following the exact structure below.
-
-### FORMATTING REQUIREMENTS:
-- Use proper markdown with clear sections
-- Include specific code snippets with language tags
-- Provide concrete examples for improvements
-- Use tables for structured findings
-- Reference specific file locations
-- Professional tone, no emojis
-
-### REQUIRED STRUCTURE:
-
-## Code Review Summary
-Brief overview of changes and overall quality assessment.
-**Include a small Mermaid sequence diagram summarizing the PR.** 
-
-Example Mermaid Diagram:
-`+"```mermaid\n"+`sequenceDiagram
-    Mermaid code the diagram should show the concise logical changes in the codebase between old code and new code.
-`+"```\n"+`
-
-## Critical Issues
-List high-priority issues requiring immediate attention with clear impact explanations.
-
-## Code Quality Analysis
-
-### Security Concerns
-Identify security issues with code examples and explanations.
-
-### Performance Issues  
-Highlight performance problems with optimization suggestions.
-
-### Best Practices
-Note coding standard violations and improvement opportunities.
-
-## Detailed Findings
-
-<details>
-  <summary>📂 Click to expand issue table</summary>
-
-| Category | Issue Description | Location (File:Line) | Severity | Recommendation |
-|----------|-------------------|----------------------|----------|----------------|
-| Example  | Description here  | file.js:42           | High     | Specific fix   |
-
-</details>
-
-## Code Examples
-
-### Current Implementation
-Show problematic code snippets with explanations of why they're issues.
-
-### Suggested Improvements
-Present corrected versions with detailed explanations.
-
-## Testing Recommendations
-Specific test suggestions for the changes.
-
-
----
-
-Here is the diff to review:
-` + "```diff\n" + diff + "\n```")
 }
 
 func (c *OllamaClient) cleanResponse(response string) string {
     // Remove thinking process if present
     lines := []string{}
     skipThinking := false
-    
+
     for _, line := range []string{response} {
         if line == "Thinking..." {
             skipThinking = true
@@ -236,7 +181,7 @@ func (c *OllamaClient) cleanResponse(response string) string {
             lines = append(lines, line)
         }
     }
-    
+
     if len(lines) > 0 {
         return lines[0]
     }

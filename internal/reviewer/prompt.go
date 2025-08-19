@@ -1,5 +1,6 @@
 package reviewer
 
+
 func BuildReviewPrompt(diff string) string {
     return `You are an expert code reviewer. Analyze the provided git diff and deliver a comprehensive, professional code review following the exact structure below.
 
@@ -15,6 +16,12 @@ func BuildReviewPrompt(diff string) string {
 
 ## Code Review Summary
 Brief overview of changes and overall quality assessment.
+**Include a small Mermaid sequence diagram summarizing the PR.** 
+
+Example Mermaid Diagram:
+`+"```mermaid\n"+`sequenceDiagram
+    Mermaid code the diagram should show the concise logical changes in the codebase between old code and new code.
+`+"```\n"+`
 
 ## Critical Issues
 List high-priority issues requiring immediate attention with clear impact explanations.
@@ -48,15 +55,10 @@ Show problematic code snippets with explanations of why they're issues.
 
 ### Suggested Improvements
 Present corrected versions with detailed explanations.
-
-## Testing Recommendations
-Specific test suggestions for the changes.
-
-## Documentation Notes
-Documentation improvements or additions needed.
-
+  
 ---
 
 Here is the diff to review:
 ` + "```diff\n" + diff + "\n```"
 }
+
