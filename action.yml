@@ -1,6 +1,6 @@
-name: 'KeployAI Code Review'
+name: 'Keploy-AI Code Review'
 description: 'Provides automated, AI-powered code reviews on pull requests with a resilient fallback system using GitHub Models and Ollama.'
-author: 'EuclidStellar'
+author: 'Keploy'
 
 branding:
   icon: 'git-pull-request'
@@ -47,4 +47,4 @@ outputs:
 
 runs:
   using: 'docker'
-  image: 'docker://ghcr.io/euclidstellar/code-review-agent:v1'
+  image: 'docker://ghcr.io/keploy/code-review-agent:v1'

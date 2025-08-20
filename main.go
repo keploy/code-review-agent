@@ -8,11 +8,11 @@ import (
 	"os/exec"
 	"strings"
 
-	"github.com/euclidstellar/code-review-agent/internal/config"
-	"github.com/euclidstellar/code-review-agent/internal/diff"
-	"github.com/euclidstellar/code-review-agent/internal/github"
-	"github.com/euclidstellar/code-review-agent/internal/reviewer"
-	"github.com/euclidstellar/code-review-agent/internal/utils"
+	"github.com/keploy/code-review-agent/internal/config"
+	"github.com/keploy/code-review-agent/internal/diff"
+	"github.com/keploy/code-review-agent/internal/github"
+	"github.com/keploy/code-review-agent/internal/reviewer"
+	"github.com/keploy/code-review-agent/internal/utils"
 )
 
 func main() {

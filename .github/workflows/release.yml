@@ -53,7 +53,7 @@ jobs:
         uses: docker/metadata-action@v5
         with:
           # Specifies the name of the image. ghcr.io/${{ github.repository }} will be automatically
-          # converted to lowercase, e.g., ghcr.io/euclidstellar/code-review-agent.
+          # converted to lowercase, e.g., ghcr.io/keploy/code-review-agent.
           images: ghcr.io/${{ github.repository }}
           # The action automatically creates tags from the release version.
           # For a release 'v1.2.3', it will generate tags: 'v1.2.3', 'v1.2', 'v1', and 'latest'.

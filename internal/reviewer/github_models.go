@@ -7,7 +7,7 @@ import (
 	"io"
 	"net/http"
 	"strings"
-    "github.com/euclidstellar/code-review-agent/internal/config"
+    "github.com/keploy/code-review-agent/internal/config"
 )
 
 
