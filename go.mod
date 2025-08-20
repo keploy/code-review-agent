@@ -1,3 +1,14 @@
-module github.com/keploy/code-review-agent
+module github.com/euclidstellar/code-review-agent
 
-go 1.24.3
+go 1.24.1
+
+require (
+	github.com/google/go-github/v57 v57.0.0
+	go.uber.org/zap v1.27.0
+	golang.org/x/oauth2 v0.30.0
+)
+
+require (
+	github.com/google/go-querystring v1.1.0 // indirect
+	go.uber.org/multierr v1.10.0 // indirect
+)
