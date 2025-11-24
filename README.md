@@ -4,6 +4,18 @@
 
 An intelligent GitHub Action that provides automated, AI-powered code reviews on your pull requests. It features a resilient fallback system, visual summaries, and smart diff analysis to deliver professional-grade feedback.
 
+
+## Why This Is Helpful
+
+This action improves code review workflow by:
+
+- **Reducing reviewer workload** — AI handles routine comments so humans focus on critical architecture-level feedback.
+- **Providing consistent feedback** — every PR receives structured, unbiased review.
+- **Catching issues early** — flags style, performance, and potential bugs before human review.
+- **Maintaining fast development velocity** — especially valuable for teams with frequent PRs.
+- **Ensuring reliability** — fallback to Ollama guarantees reviews continue even if GitHub Models are unavailable.
+
+
 ## Key Features
 
 -   📊 **Visual PR Summary**: Each review starts with a Mermaid sequence diagram summarizing the changes.
@@ -89,13 +101,41 @@ jobs:
           ignore-patterns: '*.md,*.lock,dist/**'
 ```
 
-## Inputs
+## Inputs 
+
+| Name            | Required | Default      | Description                                   |
+|-----------------|----------|--------------|-----------------------------------------------|
+| `github-token`  | ✅       | –            | Token to read the repo and post PR comments.  |
+| `model`         | ❌       | `gpt-4o`     | GitHub Models model used for the review.      |
+| `ollama-model`  | ❌       | –            | Ollama model used as a fallback.             |
+| `temperature`   | ❌       | `0.1`        | Lower = more deterministic reviews.          |
+| `ignore-patterns` | ❌     | –            | Glob patterns to skip files from the review. |
 
 See the [`action.yml`](action.yml) file for a full list of inputs and their descriptions.
 
-## Contributing
+## Contributing 🤝
 
-Contributions are welcome! Please open an issue or submit a pull request.
+We love contributions! Whether it’s improving documentation, fixing bugs, or adding new features — all PRs are welcome.
+
+### How to Contribute
+
+1. Fork the repo
+2. Create a new branch (`feature/your-feature-name`)
+3. Make your changes
+4. Run tests (if applicable)
+5. Submit a PR with a clear description of your changes
+
+### Contribution Guidelines
+
+- Keep PRs focused and scoped
+- Use meaningful commit messages
+- Describe the motivation behind the change
+- If adding functionality, update the README when needed
+
+### Need Help?
+
+Open a discussion or issue — we’re happy to support contributors.
+
 
 ## License
 
